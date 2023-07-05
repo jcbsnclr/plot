@@ -1,4 +1,5 @@
 use image::GenericImage;
+use clap::Parser;
 
 /// The [BadEvent] error is produced when the program receives an error that is in an invalid format
 #[derive(Debug, thiserror::Error)]
@@ -57,25 +58,33 @@ impl Event {
     }
 }
 
+const PAL: [u32; 16] = [
+    0xaaaaaaff,
+    0x005500ff,
+    0x00aa00ff,
+    0x00ff00ff,
+    0x0000ffff,
+    0x0055ffff,
+    0x00aaffff,
+    0x00ffffff,
+    0xff0000ff,
+    0xff5500ff,
+    0xffaa00ff,
+    0xffff00ff,
+    0xff00ffff,
+    0xff55ffff,
+    0xffaaffff,
+    0xffffffff
+];
+
+#[derive(Parser)]
+struct Cmdline {
+    #[arg(short, long)]
+    resolution: u32
+}
+
 fn main() -> anyhow::Result<()> {
-    let pal: [u32; 16] = [
-        0xaaaaaaff,
-        0x005500ff,
-        0x00aa00ff,
-        0x00ff00ff,
-        0x0000ffff,
-        0x0055ffff,
-        0x00aaffff,
-        0x00ffffff,
-        0xff0000ff,
-        0xff5500ff,
-        0xffaa00ff,
-        0xffff00ff,
-        0xff00ffff,
-        0xff55ffff,
-        0xffaaffff,
-        0xffffffff
-    ];
+    let args = Cmdline::parse();
 
     // transform stdin into a list of events; ignore bad events, log to stderr
     let events = std::io::stdin()
@@ -92,7 +101,7 @@ fn main() -> anyhow::Result<()> {
         })
         .collect::<Vec<_>>();
 
-    let mut image = image::DynamicImage::new_rgb8(512, 128);
+    let mut image = image::DynamicImage::new_rgb8(args.resolution, 128);
 
     // extract first and last timestamp
     let time_min = events.iter()
@@ -119,14 +128,14 @@ fn main() -> anyhow::Result<()> {
         // use note for y position
         let y = event.note as u32;
         // extract colour from pallete based on channel
-        let colour = pal[event.channel as usize]
+        let colour = PAL[event.channel as usize]
             .to_le_bytes().into();
 
         image.put_pixel(x, y, colour);
     }
     
     // scale up the image for easier viewing and write to file
-    image.resize(512, 2048, image::imageops::Nearest);
+    image.resize(image.width() * 4, image.height() * 4, image::imageops::Nearest);
     image.save("output.png")?;
 
     Ok(())

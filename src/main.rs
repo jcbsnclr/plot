@@ -80,11 +80,17 @@ const PAL: [u32; 16] = [
 #[derive(Parser)]
 struct Cmdline {
     #[arg(short, long)]
-    resolution: u32
+    resolution: u32,
+    #[arg(short, long)]
+    upscale: bool
 }
 
 fn main() -> anyhow::Result<()> {
     let args = Cmdline::parse();
+
+    println!("resolution : {}", args.resolution);
+    println!("upscaled?  : {}", args.upscale);
+    println!("-------------------");
 
     // transform stdin into a list of events; ignore bad events, log to stderr
     let events = std::io::stdin()
@@ -120,6 +126,9 @@ fn main() -> anyhow::Result<()> {
         }
     };
 
+    println!("time start : {min}");
+    println!("time end   : {max}");
+
     for event in events.into_iter() {
         // the x position should map timestamps across the whole of the output image
         let x = (
@@ -135,7 +144,9 @@ fn main() -> anyhow::Result<()> {
     }
     
     // scale up the image for easier viewing and write to file
-    image.resize(image.width() * 4, image.height() * 4, image::imageops::Nearest);
+    if args.upscale {
+        image.resize(image.width() * 4, image.height() * 4, image::imageops::Nearest);
+    }
     image.save("output.png")?;
 
     Ok(())
